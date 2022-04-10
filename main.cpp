@@ -91,14 +91,12 @@ void *barber(void *arg) {
         // Barber sleeps until he is woken up by a customer.
         sem_wait(&wakeBarber);
         // Barber surrenders barber chair. 
+        // Need to finesse barber chair and barber waking. 
         sem_post(&barberChair);
 
-        printf("Barber is giving up his barber chair to give a haircut.\n");
-
-
+        printf("Barber is giving the barber chair to a customer.\n");
+        printf("Barber is giving the customer a haircut.\n");
         sleep(5);
-
-
 
     }
 }
@@ -110,8 +108,11 @@ void *customer(void *customerNumber) {
     // Wait until a chair in the waiting room 
     // is available. 
     sem_wait(&chairsAvailable);
-    printf("Customer %d entering waiting room and sitting in chair.\n");
+    printf("Customer %d entering waiting room.\n");
 
+    // No this doesn't work b/c barber needs to sleep in chair. 
+    // Maybe need to do a global variable about number of 
+    // chairs free? 
     // Wait until the barber chair is free.
     sem_wait(&barberChair);
 
