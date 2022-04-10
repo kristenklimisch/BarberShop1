@@ -1,0 +1,7 @@
+class Customer {
+    void enterShop();
+
+    
+
+
+};
