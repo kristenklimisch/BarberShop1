@@ -55,7 +55,10 @@ int main (int argc, char *argv[]) {
     // Initialize the semaphores. 
     sem_init(&chairsAvailable, 0, n);
     sem_init(&barberChair, 0, 1);
-    sem_init(&wakeBarber, 0, 1);
+    sem_init(&wakeBarber, 0, 0); //I think this makes sense as a 0, 
+    // sample code did it as 1 though. 
+    // 3 easy peices says all locks should be initialized to 1.
+    // Note for KK: if errors, can look at starting values of sems
 
     // Create the barber thread.
     pthread_create(&btid, NULL, barber, NULL);
@@ -82,27 +85,52 @@ int main (int argc, char *argv[]) {
 }
 
 void *barber(void *arg) {
+    while(!(done_with_all_customers)){
+        printf("Barber is sleeping.\n");
 
+        // Barber sleeps until he is woken up by a customer.
+        sem_wait(&wakeBarber);
+        // Barber surrenders barber chair. 
+        sem_post(&barberChair);
+
+        printf("Barber is giving up his barber chair to give a haircut.\n");
+
+
+        sleep(5);
+
+
+
+    }
 }
 
 void *customer(void *customerNumber) {
     int number = *(int *)customerNumber;
-    printf("Customer %d attempting to enter barber shop\n");
+    printf("Customer %d attempting to enter barber shop.\n");
     
     // Wait until a chair in the waiting room 
     // is available. 
     sem_wait(&chairsAvailable);
-    printf("Customer %d entering waiting room and sitting in chair");
+    printf("Customer %d entering waiting room and sitting in chair.\n");
 
     // Wait until the barber chair is free.
     sem_wait(&barberChair);
 
-    // When the barber chair is free, give up
-    // your chair in the waiting room.
+    // When the barber chair is free, customer gives up 
+    // their chair in the waiting room.
     sem_post(&chairsAvailable);
 
-    // KK note- how are we waking the barber when the barber is asleep?
-    // Wake up the barber
+    // Wake up the barber.
+    sem_post(&wakeBarber);
+
+    printf("Customer %d getting hair cut.\n");
+
+    // After finishing haircut, give up the barber chair.
+    sem_post(&barberChair);
+    printf("Customer %d done with haircut and exiting barbershop.\n");
+}
+
+
+
     
 
 
