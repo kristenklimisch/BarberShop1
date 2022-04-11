@@ -91,18 +91,24 @@ int main (int argc, char *argv[]) {
 
 void *barber(void *arg) {
     while(!(done_with_all_customers)){
-        if (customers == 0) {
-            printf("Barber is sleeping in barber chair.\n")
+        
+        // When there are no customers in the waiting room or
+        // getting their hair cut, barber sleeps in the barber chair. 
+        while (customersInShop == 0) {
+            printf("Barber is sleeping in barber chair.\n");
         }
         
         // Barber sleeps until he is woken up by a customer.
         sem_wait(&wakeBarber);
-        // Barber surrenders barber chair. 
-        // Need to finesse barber chair and barber waking. 
+
+        // Barber gives up barber chair.
         sem_post(&barberChair);
 
         printf("Barber is giving the barber chair to a customer.\n");
         printf("Barber is giving the customer a haircut.\n");
+
+        // Sleep to simulate haircut. In this simple program,
+        // all haircuts take the same amount of time. 
         sleep(5);
 
     }
@@ -111,6 +117,9 @@ void *barber(void *arg) {
 void *customer(void *customerNumber) {
     int number = *(int *)customerNumber;
     printf("Customer %d attempting to enter barber shop.\n");
+
+    // Wait until a chair is available in the waiting room 
+    // to enter the waiting room. 
     sem_wait(&chairsAvailable);
     printf("Customer %d entering waiting room.\n");
 
@@ -119,20 +128,20 @@ void *customer(void *customerNumber) {
     pthread_mutex_lock(&customers);
     customersInShop++;
     pthread_mutex_unlock(&customers);
-.
-    //FIGURE OUT BARBER CHAIR LOGIC
-    sem_wait(&barberChair);
-
-    // When the barber chair is free, customer gives up 
-    // their chair in the waiting room.
-    sem_post(&chairsAvailable);
 
     // Wake up the barber.
     sem_post(&wakeBarber);
+    
+    // Wait until the barber chair is not occupied. 
+    sem_wait(&barberChair);
+
+    // Move from waiting room to work room and give up
+    // chair in waiting room. 
+    sem_post(&chairsAvailable);
 
     printf("Customer %d getting hair cut.\n");
 
-    // After finishing haircut, give up the barber chair.
+    // After haircut is complete, customer gives up the barber chair.
     sem_post(&barberChair);
     printf("Customer %d done with haircut and exiting barbershop.\n");
 
