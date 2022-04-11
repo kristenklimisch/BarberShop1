@@ -10,6 +10,10 @@
 void *customer (void *num);
 void *barber(void *);
 
+
+// Define mutex.
+pthread_mutex_t customers;
+
 // Define the semaphores.
 
 // chairsAvailable tracks number of chairs available
@@ -28,7 +32,8 @@ sem_t wakeBarber;
 // Flag indicating barber's work is done for the day. 
 bool done_with_all_customers = FALSE; 
 
-void 
+// Global variable for number of customers in the barbershop.
+int customersInShop = 0;
 
 int main (int argc, char *argv[]) {
     int numCustomers = NUM_CUSTOMERS;
@@ -52,13 +57,13 @@ int main (int argc, char *argv[]) {
         exit(-1);
     }
 
+    // Initialize the mutex.
+    pthread_mutex_init(&customers, NULL);
+
     // Initialize the semaphores. 
     sem_init(&chairsAvailable, 0, n);
     sem_init(&barberChair, 0, 1);
-    sem_init(&wakeBarber, 0, 0); //I think this makes sense as a 0, 
-    // sample code did it as 1 though. 
-    // 3 easy peices says all locks should be initialized to 1.
-    // Note for KK: if errors, can look at starting values of sems
+    sem_init(&wakeBarber, 0, 1); 
 
     // Create the barber thread.
     pthread_create(&btid, NULL, barber, NULL);
@@ -86,8 +91,10 @@ int main (int argc, char *argv[]) {
 
 void *barber(void *arg) {
     while(!(done_with_all_customers)){
-        printf("Barber is sleeping.\n");
-
+        if (customers == 0) {
+            printf("Barber is sleeping in barber chair.\n")
+        }
+        
         // Barber sleeps until he is woken up by a customer.
         sem_wait(&wakeBarber);
         // Barber surrenders barber chair. 
@@ -104,16 +111,16 @@ void *barber(void *arg) {
 void *customer(void *customerNumber) {
     int number = *(int *)customerNumber;
     printf("Customer %d attempting to enter barber shop.\n");
-    
-    // Wait until a chair in the waiting room 
-    // is available. 
     sem_wait(&chairsAvailable);
     printf("Customer %d entering waiting room.\n");
 
-    // No this doesn't work b/c barber needs to sleep in chair. 
-    // Maybe need to do a global variable about number of 
-    // chairs free? 
-    // Wait until the barber chair is free.
+    // Increment number of customers in barber shop when a customer
+    // enters the waiting room. 
+    pthread_mutex_lock(&customers);
+    customersInShop++;
+    pthread_mutex_unlock(&customers);
+.
+    //FIGURE OUT BARBER CHAIR LOGIC
     sem_wait(&barberChair);
 
     // When the barber chair is free, customer gives up 
@@ -128,6 +135,12 @@ void *customer(void *customerNumber) {
     // After finishing haircut, give up the barber chair.
     sem_post(&barberChair);
     printf("Customer %d done with haircut and exiting barbershop.\n");
+
+    // Decrement number of customers in barber shop when a customer
+    // completes their haricut and exits barbershop.  
+    pthread_mutex_lock(&customers);
+    customersInShop--;
+    pthread_mutex_unlock(&customers);
 }
 
 
