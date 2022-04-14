@@ -37,6 +37,7 @@ bool done_with_all_customers = 0;
 // Global variable for number of customers in the barbershop.
 int customersInShop = 0;
 
+// Add functionality to kick customers out if waiting room is full. 
 int main (int argc, char *argv[]) {
     int numCustomers = NUM_CUSTOMERS;
     
@@ -77,7 +78,7 @@ int main (int argc, char *argv[]) {
     for (i = 0; i<numCustomers; i++) {
         customerID[i] = i +1;
         pthread_create(&tid[i], NULL, customer, &customerID[i]);
-        sleep(1); 
+        //sleep(1); 
     }
 
     // Wait for all customer threads to finish.
@@ -115,6 +116,7 @@ void *barber(void *arg) {
         // Barber gives up barber chair.
         sem_post(&barberChair);
 
+        // This only runs for very first customer to enter store. 
         printf("Barber is giving the barber chair to a customer.\n");
         printf("Barber is giving the customer a haircut.\n");
 
@@ -154,7 +156,6 @@ void *customer(void *customerNumber) {
     printf("Customer %d getting hair cut.\n", number);
 
     // After haircut is complete, customer gives up the barber chair.
-    sem_post(&barberChair);
     printf("Customer %d done with haircut and exiting barbershop.\n", number);
 
     // Decrement number of customers in barber shop when a customer
