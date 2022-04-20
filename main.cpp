@@ -9,7 +9,7 @@
 
 void *customer (void *num);
 void *barber(void *);
-
+// void inputCheck(int, int);
 
 // Define mutex.
 pthread_mutex_t m;
@@ -44,24 +44,12 @@ int main (int argc, char *argv[]) {
     // Accept user input for the number of chairs in the waiting room.
     printf("Enter the number of chairs in barbershop waiting room: ");
     check = scanf("%d", &n);
-
-    // Perform error checking for user input. 
-    if ((check < 1) || (n < 0)) {
-        printf("Invalid entry - number of chairs must be a positive number.\n");
-        printf("Program exiting.");
-        exit(-1);
-    }
+  //  inputCheck(check, n);
 
     // Accept user input for the number of customers.
     printf("Enter the number of customers. The maximum capacity of the babershop is %d customers: ", MAX_CUSTOMERS);
     check = scanf("%d", &totalCustomers);
-
-    // Perform error checking for user input. 
-    if ((check < 1) || (totalCustomers < 0)) {
-        printf("Invalid entry - number of customers must be a positive number.\n");
-        printf("Program exiting.");
-        exit(-1);
-    }
+ //   inputCheck(check, totalCustomers);
 
     // Verify that the user input for number of customers is within the maximum
     // capacity of the barbershop. If the user input exceeds the maximum capacity,
@@ -78,7 +66,7 @@ int main (int argc, char *argv[]) {
     // Initialize the semaphores. 
     sem_init(&chairsAvailable, 0, n);
     sem_init(&barberChair, 0, 0);
-    sem_init(&wakeBarber, 0, 1); 
+    sem_init(&wakeBarber, 0, 0); 
 
     // ID for barber thread.
     pthread_t btid;
@@ -108,24 +96,21 @@ int main (int argc, char *argv[]) {
     sem_post(&wakeBarber); 
 
     pthread_join(btid, NULL);
-
-    printf("Barber is leaving for the day.");
 }
 
 void *barber(void *arg) {
-    while(!(done_with_all_customers)){
+    while(!(done_with_all_customers)) {
+
         
         // When there are no customers in the waiting room or
         // getting their hair cut, barber sleeps in the barber chair. 
         // KK - for some reason, this repeats every 4 customers.
-
         pthread_mutex_lock(&m);
         if (customersInShop == 0) {
             printf("Barber is sleeping in barber chair.\n");
         }
         pthread_mutex_unlock(&m);
 
-        
         // Barber sleeps until he is woken up by a customer.
         sem_wait(&wakeBarber);
 
