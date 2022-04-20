@@ -6,13 +6,11 @@
 #include <semaphore.h>
 
 #define MAX_CUSTOMERS 20
-#define MIN_SLEEP 1
-#define MAX_SLEEP 10
 
 void *customer (void *num);
 void *barber(void *);
 void inputCheck(int, int);
-void randSleep();
+
 
 // Define mutex.
 pthread_mutex_t m;
@@ -37,15 +35,12 @@ sem_t wakeBarber;
 // day. 
 bool done_with_all_customers = 0; 
 
-// Global variable for number of customers in the waiting room.
-int customersInWaitingRoom = 0;
+// Global variable for number of customers in the barbershop.
+int customersInShop = 0;
 
 int main (int argc, char *argv[]) {
     
     int n, check, totalCustomers, i;
-
-    // Seeding random sleep function. 
-    srand(time(0));
 
     // Accept user input for the number of chairs in the waiting room.
     printf("Enter the number of chairs in barbershop waiting room: ");
@@ -88,9 +83,7 @@ int main (int argc, char *argv[]) {
     for (i = 0; i<totalCustomers; i++) {
         customerID[i] = i +1;
         pthread_create(&tid[i], NULL, customer, &customerID[i]);
-
-        // Sleep to simulate "natural" flow of customers. 
-        randSleep(); 
+        sleep(1); 
     }
 
     // Wait for all customer threads to finish.
@@ -104,72 +97,85 @@ int main (int argc, char *argv[]) {
     sem_post(&wakeBarber); 
 
     pthread_join(btid, NULL);
+
+    printf("Barber is leaving for the day.");
 }
 
 void *barber(void *arg) {
-    printf("Barber sleeps while waiting customers to arrive.\n");
-    sem_wait(&wakeBarber);
-    while(!(done_with_all_customers)) {
-            printf("Barber is giving the customer a haircut.\n");
+    while(!(done_with_all_customers)){
+        
+        printf("at v top\n");
+        // When there are no customers in the waiting room or
+        // getting their hair cut, barber sleeps in the barber chair. 
+        // This doesn't work as intended - must have barber be notified when decrement customers in shop
+        pthread_mutex_lock(&m);
+        if (customersInShop == 0) {
+            printf("customers in shop from barber function: %d\n", customersInShop);
+            printf("Barber is sleeping in barber chair.\n");
+        }
+        pthread_mutex_unlock(&m);
 
-            // Sleep to simulate haircut. 
-            randSleep();
+        // Barber sleeps until he is woken up by a customer.
+        sem_wait(&wakeBarber);
 
-            printf("Barber completes haircut. \n");
-            // Barber gives up barber chair.
-            sem_post(&barberChair);
+        // this happens after all customers have exited for the day
+        printf("after wakeBarber\n");
+ 
+        printf("Barber is giving the barber chair to a customer.\n");
+        printf("Barber is giving the customer a haircut.\n");
 
-            pthread_mutex_lock(&m);
-            if (customersInWaitingRoom == 0) {
-                printf("No customers in waiting room. Barber goes to sleep.\n");
-            }
-            pthread_mutex_unlock(&m);
+        // Sleep to simulate haircut. In this simple program,
+        // all haircuts take the same amount of time. 
+        sleep(5);
 
-            // Wait for next customer or for main thread. 
-            sem_wait(&wakeBarber);
+        // Barber gives up barber chair.
+        sem_post(&);
+
+        // do something here 
+        // wait for customer number 
     }
-    printf("Barber is going home for the day.\n");
+    // this never hits
+    // printf("barber leaves after increment");
 }
 
 void *customer(void *customerNumber) {
     int number = *(int *)customerNumber;
-    printf("Customer %d arriving at barber shop.\n", number);
+    printf("Customer %d arrived at barber shop.\n", number);
 
     // Wait until a chair is available in the waiting room 
     // to enter the waiting room. 
     sem_wait(&chairsAvailable);
+    printf("Customer %d entering waiting room.\n", number);
 
     // Increment number of customers in barber shop when a customer
-    // enters the waiting room.
+    // enters the waiting room. 
     pthread_mutex_lock(&m);
-    // If we wanted to kick customers out if the waiting room was full when they 
-    // arrived at the barber shop, we would add a conditional here to compare
-    // the number of customers in the waiting room with the chairs available. 
-    // We'd also delete the blocking chairsAvailable semaphore. 
-    customersInWaitingRoom++;
-    printf("Customer %d entering waiting room. There are now %d customers in the waiting room.\n", number, customersInWaitingRoom);
+    customersInShop++;
+    printf("customers in shop from customer function right after increment: %d\n", customersInShop);
     pthread_mutex_unlock(&m);
 
     // Wake up the barber.
-    // Rename customer ready
     sem_post(&wakeBarber);
+    
+    // Wait until the barber 
+    sem_wait(&barberReady);
 
     // Move from waiting room to work room and give up
     // chair in waiting room. 
     sem_post(&chairsAvailable);
 
+    printf("Customer %d getting hair cut.\n", number);
+
+    // After haircut is complete, customer gives up the barber chair.
+    printf("Customer %d done with haircut and exiting barbershop.\n", number);
+
     // Decrement number of customers in barber shop when a customer
     // completes their haircut and exits barbershop.  
     pthread_mutex_lock(&m);
-    customersInWaitingRoom--;
+    // decrementing here has no effect on barber thread - barber does not go to sleep when there are 0 customers
+    customersInShop--;
+    printf("customers in shop from customer function right after decrement: %d\n", customersInShop);
     pthread_mutex_unlock(&m);
-
-    // Wait until the barber completes haircut.
-    printf("Customer %d getting hair cut.\n", number); 
-    sem_wait(&barberChair);
-    
-    // After haircut is complete, customer gives up the barber chair.
-    printf("Customer %d has exited.\n", number);
 }
 
 // Function to verify that user input meets program criteria. 
@@ -182,11 +188,6 @@ void inputCheck(int check, int n) {
         exit(-1);
     }    
 
-}
-
-void randSleep() {
-    int randNum = rand()%(MAX_SLEEP - MIN_SLEEP + 1) + MIN_SLEEP;
-    sleep(randNum);
 }
 
 
